@@ -6,6 +6,22 @@
 # To configure, compile, install, just run this script.
 #     python setup.py install
 
+import shutil
+import stat
+import glob
+import os.path
+import distutils.command.install_headers
+from distutils.command.sdist import sdist
+from distutils.command.install_data import install_data
+from distutils.extension import read_setup_file
+from distutils.core import setup, Command
+import distutils.sysconfig
+from distutils.command.build_ext import build_ext
+import distutils
+from setuptools import setup
+import os
+import sys
+import re
 import platform
 import sysconfig
 
@@ -64,13 +80,8 @@ METADATA = {
     "python_requires": '>=3.6',
 }
 
-import re
-import sys
-import os
 
 # just import these always and fail early if not present
-from setuptools import setup
-import distutils
 
 
 if os.environ.get('PYGAME_DETECT_AVX2', '') != '':
@@ -124,10 +135,9 @@ if os.environ.get('PYGAME_DETECT_AVX2', '') != '':
     distutils.ccompiler.CCompiler.spawn = spawn
 
 # A (bit hacky) fix for https://github.com/pygame/pygame/issues/2613
-# This is due to the fact that distutils uses command line args to 
+# This is due to the fact that distutils uses command line args to
 # export PyInit_* functions on windows, but those functions are already exported
 # and that is why compiler gives warnings
-from distutils.command.build_ext import build_ext
 
 build_ext.get_export_symbols = lambda self, ext: []
 
@@ -177,7 +187,8 @@ if not hasattr(sys, 'version_info') or sys.version_info < (3, 6):
     compilation_help()
     raise SystemExit("Pygame requires Python3 version 3.6 or above.")
 if IS_PYPY and sys.pypy_version_info < (7,):
-    raise SystemExit("Pygame requires PyPy version 7.0.0 above, compatible with CPython >= 3.6")
+    raise SystemExit(
+        "Pygame requires PyPy version 7.0.0 above, compatible with CPython >= 3.6")
 
 
 def consume_arg(name):
@@ -246,7 +257,7 @@ if compile_cython:
     import glob
 
     pyx_files = glob.glob(os.path.join('src_c', 'cython', 'pygame', '*.pyx')) + \
-                glob.glob(os.path.join('src_c', 'cython', 'pygame', '**', '*.pyx'))
+        glob.glob(os.path.join('src_c', 'cython', 'pygame', '**', '*.pyx'))
 
     pyx_files, pyx_meta = create_extension_list(pyx_files, ctx=ctx)
     deps = create_dependency_tree(ctx)
@@ -290,7 +301,7 @@ if compile_cython:
     for i, kwargs in enumerate(queue):
         kwargs['progress'] = f'[{i + 1}/{count}] '
         cythonize_one(**kwargs)
-    
+
     if cython_only:
         sys.exit(0)
 
@@ -299,12 +310,6 @@ AUTO_CONFIG = not os.path.isfile('Setup') and not no_compilation
 if consume_arg('-auto'):
     AUTO_CONFIG = True
 
-import os.path, glob, stat, shutil
-import distutils.sysconfig
-from distutils.core import setup, Command
-from distutils.extension import read_setup_file
-from distutils.command.install_data import install_data
-from distutils.command.sdist import sdist
 
 revision = ''
 
@@ -354,8 +359,6 @@ else:
 headers = glob.glob(os.path.join('src_c', '*.h'))
 headers.remove(os.path.join('src_c', 'scale.h'))
 headers.append(os.path.join('src_c', 'include'))
-
-import distutils.command.install_headers
 
 
 # monkey patch distutils header install to copy over directories
@@ -407,7 +410,8 @@ if AUTO_CONFIG:
 
 try:
     s_mtime = os.stat("Setup")[stat.ST_MTIME]
-    sin_mtime = os.stat(os.path.join('buildconfig', 'Setup.SDL2.in'))[stat.ST_MTIME]
+    sin_mtime = os.stat(os.path.join('buildconfig', 'Setup.SDL2.in'))[
+        stat.ST_MTIME]
     if sin_mtime > s_mtime:
         print('\n\nWARNING, "buildconfig/Setup.SDL2.in" newer than "Setup",'
               'you might need to modify "Setup".')
@@ -449,7 +453,7 @@ for e in extensions:
 
     if "freetype" in e.name and sys.platform not in ("darwin", "win32"):
         # TODO: fix freetype issues here
-        if sysconfig.get_config_var("MAINCC") != "clang":        
+        if sysconfig.get_config_var("MAINCC") != "clang":
             e.extra_compile_args.append("-Wno-error=unused-but-set-variable")
 
     if "mask" in e.name and sys.platform == "win32":
@@ -462,7 +466,8 @@ for e in extensions:
             and e.name not in ("pypm", "_sprite", "gfxdraw")
     ):
         # Do -Werror only on CI, and exclude -Werror on Cython C files and gfxdraw
-        e.extra_compile_args.append("/WX" if sys.platform == "win32" else "-Werror")
+        e.extra_compile_args.append(
+            "/WX" if sys.platform == "win32" else "-Werror")
 
 # if not building font, try replacing with ftfont
 alternate_font = os.path.join('src_py', 'font.py')
@@ -562,21 +567,27 @@ def parse_source_version():
     pgh_major = -1
     pgh_minor = -1
     pgh_patch = -1
-    major_exp_search = re.compile(r'define\s+PG_MAJOR_VERSION\s+([0-9]+)').search
-    minor_exp_search = re.compile(r'define\s+PG_MINOR_VERSION\s+([0-9]+)').search
-    patch_exp_search = re.compile(r'define\s+PG_PATCH_VERSION\s+([0-9]+)').search
+    major_exp_search = re.compile(
+        r'define\s+PG_MAJOR_VERSION\s+([0-9]+)').search
+    minor_exp_search = re.compile(
+        r'define\s+PG_MINOR_VERSION\s+([0-9]+)').search
+    patch_exp_search = re.compile(
+        r'define\s+PG_PATCH_VERSION\s+([0-9]+)').search
     pg_header = os.path.join('src_c', 'include', '_pygame.h')
     with open(pg_header) as f:
         for line in f:
             if pgh_major == -1:
                 m = major_exp_search(line)
-                if m: pgh_major = int(m.group(1))
+                if m:
+                    pgh_major = int(m.group(1))
             if pgh_minor == -1:
                 m = minor_exp_search(line)
-                if m: pgh_minor = int(m.group(1))
+                if m:
+                    pgh_minor = int(m.group(1))
             if pgh_patch == -1:
                 m = patch_exp_search(line)
-                if m: pgh_patch = int(m.group(1))
+                if m:
+                    pgh_patch = int(m.group(1))
     if pgh_major == -1:
         raise SystemExit("_pygame.h: cannot find PG_MAJOR_VERSION")
     if pgh_minor == -1:
@@ -596,9 +607,11 @@ def write_version_module(pygame_version, revision):
         header = header_file.read()
     with open(os.path.join('src_py', 'version.py'), 'w') as version_file:
         version_file.write(header)
-        version_file.write('ver = "' + pygame_version + '"  # pylint: disable=invalid-name\n')
+        version_file.write('ver = "' + pygame_version +
+                           '"  # pylint: disable=invalid-name\n')
         version_file.write(f'vernum = PygameVersion({vernum})\n')
-        version_file.write('rev = "' + revision + '"  # pylint: disable=invalid-name\n')
+        version_file.write('rev = "' + revision +
+                           '"  # pylint: disable=invalid-name\n')
         version_file.write('\n__all__ = ["SDL", "ver", "vernum", "rev"]\n')
 
 
@@ -607,8 +620,11 @@ write_version_module(METADATA['version'], revision)
 # required. This will be filled if doing a Windows build.
 cmdclass = {}
 
+
 def test(rs):
-    print(rs)
+
+    print('rs is ', rs)
+
 
 def add_command(name):
     def decorator(command):
@@ -630,7 +646,6 @@ if sys.platform == 'win32' and not 'WIN32_DO_NOT_INCLUDE_DEPS' in os.environ:
         if e.name.startswith('COPYLIB_'):
             lib_dependencies[e.name[8:]] = e.libraries
 
-
     def dependencies(roots):
         """Return a set of dependencies for the list of library file roots
 
@@ -647,7 +662,6 @@ if sys.platform == 'win32' and not 'WIN32_DO_NOT_INCLUDE_DEPS' in os.environ:
                 root_set[root] = 1
                 root_set.update(dependencies(deps))
         return root_set
-
 
     the_dlls = {}
     required_dlls = {}
@@ -700,7 +714,6 @@ if sys.platform == 'win32' and not 'WIN32_DO_NOT_INCLUDE_DEPS' in os.environ:
                     )
                 )
 
-
     def has_flag(compiler, flagname):
         """
         Adapted from here: https://github.com/pybind/python_example/blob/master/setup.py#L37
@@ -712,7 +725,8 @@ if sys.platform == 'win32' and not 'WIN32_DO_NOT_INCLUDE_DEPS' in os.environ:
             f.write('int main (int argc, char **argv) { return 0; }')
             fname = f.name
         try:
-            compiler.compile([fname], output_dir=root_drive, extra_postargs=[flagname])
+            compiler.compile([fname], output_dir=root_drive,
+                             extra_postargs=[flagname])
         except CompileError:
             return False
         else:
@@ -729,11 +743,10 @@ if sys.platform == 'win32' and not 'WIN32_DO_NOT_INCLUDE_DEPS' in os.environ:
                 pass
         return True
 
-
     # filter flags, returns list of accepted flags
+
     def flag_filter(compiler, *flags):
         return [flag for flag in flags if has_flag(compiler, flag)]
-
 
     # Only on win32, not MSYS2
     if 'MSYSTEM' not in os.environ:
@@ -757,8 +770,8 @@ if sys.platform == 'win32' and not 'WIN32_DO_NOT_INCLUDE_DEPS' in os.environ:
 
                 build_ext.build_extensions(self)
 
-
         # Add the precompiled smooth scale MMX functions to transform.
+
         def replace_scale_mmx():
             for e in extensions:
                 if e.name == 'transform':
@@ -772,7 +785,6 @@ if sys.platform == 'win32' and not 'WIN32_DO_NOT_INCLUDE_DEPS' in os.environ:
                         if e.sources[i].endswith('scale_mmx.c'):
                             del e.sources[i]
                             return
-
 
         if not 'ARM64' in sys.version:
             replace_scale_mmx()
@@ -810,7 +822,6 @@ if "bdist_msi" in sys.argv:
     # we also want to include the repository revision in the file name
     from distutils.command import bdist_msi
     import msilib
-
 
     @add_command('bdist_msi')
     class bdist_msi_overwrite_on_install(bdist_msi.bdist_msi):
@@ -917,8 +928,8 @@ class LintFormatCommand(Command):
             "_sprite.c",
         ]
         c_file_allow = ["_sdl2/touch.c"]
-        c_files = filter_files(path_obj, c_files_unfiltered, c_file_allow, c_file_disallow)
-
+        c_files = filter_files(path_obj, c_files_unfiltered,
+                               c_file_allow, c_file_disallow)
 
         # Other files have too many issues for now. setup.py, buildconfig, etc
         python_directories = ["src_py", "test", "examples"]
