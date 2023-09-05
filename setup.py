@@ -607,6 +607,8 @@ write_version_module(METADATA['version'], revision)
 # required. This will be filled if doing a Windows build.
 cmdclass = {}
 
+def test(rs):
+    print(rs)
 
 def add_command(name):
     def decorator(command):
